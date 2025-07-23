@@ -6,6 +6,15 @@ import json
 import re
 from typing import Dict, List, Any
 from pathlib import Path
+import argparse
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Парсит CSV файл учебного плана")
+    parser.add_argument("--input", "-i", type=str, required=True, help="Путь к CSV файлу")
+    parser.add_argument("--output", "-o", type=str, required=True, help="Путь к выходному JSON файлу")
+    return parser.parse_args()
+
 
 def parse_curriculum_csv(csv_file_path: str) -> Dict[str, Any]:
     """
@@ -35,6 +44,8 @@ def parse_curriculum_csv(csv_file_path: str) -> Dict[str, Any]:
     current_block = None
     current_module = None
     
+    print("🔍 Анализ строк CSV файла...")
+    
     # Проходим по всем строкам
     for index, row in df.iterrows():
         # Пропускаем пустые строки
@@ -47,10 +58,15 @@ def parse_curriculum_csv(csv_file_path: str) -> Dict[str, Any]:
         col3 = str(row.iloc[2]).strip() if pd.notna(row.iloc[2]) else ""
         col4 = str(row.iloc[3]).strip() if pd.notna(row.iloc[3]) else ""
         
+        # Отладочная информация для первых 20 строк
+        if index < 20:
+            print(f"   Строка {index}: col1='{col1}', col2='{col2}', col3='{col3}', col4='{col4}'")
+        
         # Определяем тип строки и обрабатываем соответственно
         
         # Блок 1-4 (основные блоки) - ищем в колонке 2
         if col1 == "" and "Блок" in col2 and re.match(r"Блок \d+\.", col2):
+            print(f"   Найден блок: {col2}")
             if current_block:
                 curriculum_data["blocks"].append(current_block)
             
@@ -79,6 +95,8 @@ def parse_curriculum_csv(csv_file_path: str) -> Dict[str, Any]:
                 # Обновляем общие суммы
                 curriculum_data["program_info"]["total_credits"] += credits
                 curriculum_data["program_info"]["total_hours"] += hours
+                
+                print(f"     Создан блок {block_num}: {block_name} ({credits} з.е., {hours} ч.)")
         
         # Модули внутри блоков - ищем в колонке 2 (без двоеточия)
         elif col1 == "" and col2 and not col2.startswith("Блок") and not re.match(r"^\d+$", col2) and col3 and col4:
@@ -101,6 +119,7 @@ def parse_curriculum_csv(csv_file_path: str) -> Dict[str, Any]:
                         "disciplines": []
                     }
                     current_block["modules"].append(current_module)
+                    print(f"     Создан модуль: {col2} ({credits} з.е., {hours} ч.)")
         
         # Дисциплины с номером семестра в колонке 1
         elif col1 and re.match(r"^\d+$", col1) and col2 and col3 and col4:
@@ -118,6 +137,7 @@ def parse_curriculum_csv(csv_file_path: str) -> Dict[str, Any]:
                 
                 if current_module:
                     current_module["disciplines"].append(discipline)
+                    print(f"       Добавлена дисциплина: {col2} (семестр {semester_num}, {credits} з.е.)")
                 
             except ValueError:
                 pass
@@ -138,6 +158,7 @@ def parse_curriculum_csv(csv_file_path: str) -> Dict[str, Any]:
                     
                     if current_module:
                         current_module["disciplines"].append(discipline)
+                        print(f"       Добавлена дисциплина: {col2} ({credits} з.е.)")
                 
             except ValueError:
                 pass
@@ -145,6 +166,8 @@ def parse_curriculum_csv(csv_file_path: str) -> Dict[str, Any]:
     # Добавляем последний блок
     if current_block:
         curriculum_data["blocks"].append(current_block)
+    
+    print(f"\n📊 Найдено блоков: {len(curriculum_data['blocks'])}")
     
     # Извлекаем дополнительную информацию
     curriculum_data["summary"] = extract_summary_info(curriculum_data)
@@ -221,9 +244,10 @@ def main():
     """
     Основная функция
     """
-    csv_file = "ai.csv"
-    output_file = "ai_curriculum_structured.json"
-    
+    args = parse_args()
+    csv_file = args.input
+    output_file = args.output
+
     try:
         print("📚 Парсинг учебного плана из CSV файла...")
         
