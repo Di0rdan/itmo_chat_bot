@@ -11,3 +11,5 @@ https://abit.itmo.ru/program/master/ai_product
 - load_curriculu.py -- скачивает файл с учебной программой
 
 - parse_curriculum.py -- парсит pdf файл с программой и складывает результат в .csv таблицу для дальнейшего использования
+
+- parse_curriculu_csv.py -- парсит csv файл с программой и складывает результат в .json формат для дальнейшего использования
